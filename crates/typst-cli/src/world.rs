@@ -55,11 +55,13 @@ impl SystemWorld {
 
         let library = {
             // Convert the input pairs to a dictionary.
-            let inputs: Dict = world_args
+            let mut inputs: Dict = world_args
                 .inputs
                 .iter()
                 .map(|(k, v)| (k.as_str().into(), v.as_str().into_value()))
                 .collect();
+
+            inputs.insert("url_images".into(), "true".into_value());
 
             let features =
                 process_args.features.iter().copied().map(Into::into).collect();
