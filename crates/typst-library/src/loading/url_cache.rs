@@ -1,12 +1,10 @@
-use std::collections::hash_map::DefaultHasher;
 use std::sync::Arc;
 use std::{fs, io};
-use std::hash::{Hash, Hasher};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use native_tls::{Certificate, TlsConnector};
-use ecow::{EcoString, eco_format};
+use native_tls::{TlsConnector};
+use ecow::{eco_format};
 
 
 use crate::diag::StrResult;
@@ -36,6 +34,9 @@ pub fn load_or_fetch(url: &str) -> StrResult<Bytes> {
 }
 
 fn cache_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("TYPST_URL_CACHE_DIR") {
+        return PathBuf::from(dir);
+    }
     PathBuf::from(".typst-url-cache")
 }
 
@@ -53,11 +54,11 @@ fn cache_path_for_url(cache_dir: &Path, url: &str) -> PathBuf {
 //     cache_dir.join(filename)
 // }
 
-fn hash_url(url: &str) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    url.hash(&mut hasher);
-    hasher.finish()
-}
+// fn hash_url(url: &str) -> u64 {
+//     let mut hasher = DefaultHasher::new();
+//     url.hash(&mut hasher);
+//     hasher.finish()
+// }
 
 fn extension_from_url(url: &str) -> Option<&str> {
     let path = url.split('?').next()?;

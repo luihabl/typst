@@ -30,7 +30,7 @@ use comemo::Tracked;
 use typst_syntax::{FileId, Spanned};
 
 use crate::World;
-use crate::diag::{At, HintedString, SourceResult};
+use crate::diag::{At, SourceResult};
 use crate::foundations::{Bytes, OneOrMultiple, PathOrStr, Scope, Str, cast};
 
 /// Hook up all `data-loading` definitions.
