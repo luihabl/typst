@@ -15,6 +15,9 @@ mod xml_;
 #[path = "yaml.rs"]
 mod yaml_;
 
+mod url_cache;
+use self::url_cache::{is_remote_url, load_or_fetch};
+
 pub use self::cbor_::*;
 pub use self::csv_::*;
 pub use self::json_::*;
@@ -85,21 +88,18 @@ impl Load for Spanned<&DataSource> {
     fn load(&self, world: Tracked<dyn World + '_>) -> SourceResult<Self::Output> {
         match self.v {
             DataSource::Path(path) => {
+                if let PathOrStr::Str(string) = path {
+                    let s = string.as_str();
+                    if is_remote_url(s) {
+                        let data = load_or_fetch(s).at(self.span)?;
+                        let source = Spanned::new(LoadSource::Bytes, self.span);
+                        return Ok(Loaded::new(source, data));
+                    }
+                }
+
                 let resolved =
                     path.resolve_if_some(self.span.id()).at(self.span)?.intern();
-                let data = world
-                    .file(resolved)
-                    .map_err(|error| {
-                        let mut hinted = HintedString::from(error);
-                        if let PathOrStr::Str(string) = &path
-                            && (string.as_str().starts_with("http://")
-                                || string.as_str().starts_with("https://"))
-                        {
-                            hinted.hint("network access is not supported");
-                        }
-                        hinted
-                    })
-                    .at(self.span)?;
+                let data = world.file(resolved).at(self.span)?;
                 let source = Spanned::new(LoadSource::Path(resolved), self.span);
                 Ok(Loaded::new(source, data))
             }

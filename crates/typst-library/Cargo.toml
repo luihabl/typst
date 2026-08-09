@@ -18,6 +18,9 @@ typst-macros = { workspace = true }
 typst-syntax = { workspace = true }
 typst-timing = { workspace = true }
 typst-utils = { workspace = true }
+ureq = { workspace = true }
+native-tls = { workspace = true }
+env_proxy = { workspace = true }
 arrayvec = { workspace = true }
 az = { workspace = true }
 bitflags = { workspace = true }
