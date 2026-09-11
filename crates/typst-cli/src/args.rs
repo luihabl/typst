@@ -66,7 +66,7 @@ pub struct CliArguments {
     #[command(subcommand)]
     pub command: Command,
 
-    /// Whether to use color. When set to `auto` if the terminal to supports it.
+    /// Whether to use color. When set to `auto`, uses color if the terminal supports it.
     #[clap(long, default_value_t = ColorChoice::Auto, default_missing_value = "always")]
     pub color: ColorChoice,
 
@@ -125,6 +125,13 @@ pub struct WatchCommand {
     /// Arguments for compilation.
     #[clap(flatten)]
     pub args: CompileArgs,
+
+    /// Stops the watcher from taking over the terminal.
+    ///
+    /// With this flag, the watcher will only ever print normal output lines,
+    /// not clear or reconfigure the terminal.
+    #[arg(long)]
+    pub no_fullscreen: bool,
 
     /// Arguments for the HTTP server.
     #[cfg(feature = "http-server")]
@@ -324,8 +331,13 @@ pub struct CompileArgs {
     /// This formats the output in a more human-readable, but less
     /// space-efficient way. Affects HTML, SVG, and PDF export, but not PNG
     /// export.
-    #[arg(long = "pretty")]
-    pub pretty: bool,
+    #[arg(
+        long = "pretty",
+        default_missing_value = "true",
+        num_args = 0..=1,
+        require_equals = true,
+    )]
+    pub pretty: Option<bool>,
 
     /// Which pages to export. When unspecified, all pages are exported.
     ///
@@ -349,12 +361,29 @@ pub struct CompileArgs {
     /// document is written to provide a baseline of accessibility. In some
     /// circumstances (for example when trying to reduce the size of a document)
     /// it can be desirable to disable tagged PDF.
-    #[arg(long = "no-pdf-tags")]
+    // TODO: Remove deprecated flag in the 0.17 release cycle.
+    #[arg(long = "no-pdf-tags", hide = true)]
     pub no_pdf_tags: bool,
 
+    /// Enables or disables PDF tagging.
+    ///
+    /// By default, even when not producing a `PDF/UA-1` document, a tagged PDF
+    /// document is written to provide a baseline of accessibility. In some
+    /// circumstances (for example when trying to reduce the size of a document)
+    /// it can be desirable to disable PDF tags.
+    #[arg(
+        long = "pdf-tagged",
+        default_missing_value = "true",
+        num_args = 0..=1,
+        require_equals = true,
+    )]
+    pub pdf_tagged: Option<bool>,
+
     /// The PPI (pixels per inch) to use for PNG export.
-    #[arg(long = "ppi", default_value_t = 144.0)]
-    pub ppi: f64,
+    ///
+    /// [default: 144]
+    #[arg(long = "ppi")]
+    pub ppi: Option<f64>,
 
     /// File path to which a Makefile with the current compilation's
     /// dependencies will be written.
@@ -381,7 +410,10 @@ pub struct CompileArgs {
 
     /// Opens the output file with the default viewer or a specific program
     /// after compilation. Ignored if output is stdout.
-    #[arg(long = "open", value_name = "VIEWER")]
+    ///
+    /// When passing a specific program, the name must be attached with
+    /// an equals sign (`--open=VIEWER`).
+    #[arg(long = "open", value_name = "VIEWER", require_equals = true)]
     pub open: Option<Option<String>>,
 
     /// Produces performance timings of the compilation process. (experimental)
@@ -403,6 +435,7 @@ pub struct WorldArgs {
 
     /// Add a string key-value pair visible through `sys.inputs`.
     #[clap(
+        short = 'i',
         long = "input",
         value_name = "key=value",
         action = ArgAction::Append,
@@ -748,24 +781,24 @@ impl FromStr for Pages {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.split('-').map(str::trim).collect::<Vec<_>>().as_slice() {
-            [] | [""] => Err("page export range must not be empty"),
+            [] | [""] => Err("page range must not be empty"),
             [single_page] => {
                 let page_number = parse_page_number(single_page)?;
                 Ok(Pages(Some(page_number)..=Some(page_number)))
             }
-            ["", ""] => Err("page export range must have start or end"),
+            ["", ""] => Err("page range must have start or end"),
             [start, ""] => Ok(Pages(Some(parse_page_number(start)?)..=None)),
             ["", end] => Ok(Pages(None..=Some(parse_page_number(end)?))),
             [start, end] => {
                 let start = parse_page_number(start)?;
                 let end = parse_page_number(end)?;
                 if start > end {
-                    Err("page export range must end at a page after the start")
+                    Err("page range must end at a page after the start")
                 } else {
                     Ok(Pages(Some(start)..=Some(end)))
                 }
             }
-            [_, _, _, ..] => Err("page export range must have a single hyphen"),
+            [_, _, _, ..] => Err("page range must have a single hyphen"),
         }
     }
 }
